@@ -4,3 +4,5 @@ numpy
 pandas
 python-dateutil
 selenium
+bs4
+html5lib

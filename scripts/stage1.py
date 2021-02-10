@@ -16,6 +16,7 @@ from datetime import date, timedelta
 from functools import partial
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver import Chrome
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -126,9 +127,13 @@ def get_n_pages(driver):
         return 1
 
 async def main():
-    args = parse_args()
+    args = parse_args()    
     log.basicConfig(level=args.log_level)
-    driver = Chrome()
+
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('w3c', False)
+    driver = webdriver.Chrome(options=options)
+    #driver = Chrome()
 
     step = timedelta(days=1)
     global_start, global_end = dateparser.parse(args.start_date), dateparser.parse(args.end_date)
