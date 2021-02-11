@@ -1,4 +1,5 @@
 import re
+import json
 
 from bs4 import BeautifulSoup
 from collections import defaultdict, namedtuple
@@ -38,8 +39,8 @@ ALL_FIELD_NAMES = sorted([
 NIL_FIELDS = tuple([Field(name, None) for name in ALL_FIELD_NAMES])
 
 def _find_div_with_title(title, soup):
-    common_parent = soup.select_one('#block-system-main')
-    header = common_parent.find('h2', string=title)
+    common_parent = soup.select_one('#block-system-main')      
+    header = common_parent.find('h2', string=title)    
     return header.parent if header else None
 
 def _out_name(in_name, prefix=''):
@@ -109,9 +110,10 @@ def _stringify_dict(d, insep='::', outsep='||'):
     return outsep.join([insep.join([k, v]) for k, v in zip(keys, values)])
 
 class Stage2Extractor(object):
-    def extract_fields(self, text, ctx):
+    def extract_fields(self, text, ctx):                
+        html = json.loads(text)['solution']['response']
         log_first_call()
-        soup = BeautifulSoup(text, features='html5lib')
+        soup = BeautifulSoup(html, features='html5lib')
 
         location_fields = self._extract_location_fields(soup, ctx)
         participant_fields = self._extract_participant_fields(soup)

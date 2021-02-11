@@ -6,6 +6,7 @@ import logging as log
 import numpy as np
 import pandas as pd
 import sys
+import time
 
 from aiohttp.client_exceptions import ClientResponseError
 from argparse import ArgumentParser
@@ -103,13 +104,16 @@ async def add_fields_from_incident_url(df, args, predicate=None):
     subset = df if predicate is None else df.loc[predicate]
     if len(subset) == 0:
         # No work to do
-        return df
-
+        return df    
     async with Stage2Session(limit_per_host=args.conn_limit) as session:
-        # list of coros of tuples of Fields
-        tasks = subset.apply(session.get_fields_from_incident_url, axis=1)
+        # list of coros of tuples of Fields        
+        #tasks = subset.apply(session.get_fields_from_incident_url, axis='columns')
+        tasks = []
+        for i in range(len(subset)):
+            row = subset.iloc[i]
+            tasks.append(session.get_fields_from_incident_url(row))        
         # list of (tuples of Fields) and (exceptions)
-        fields = await asyncio.gather(*tasks, return_exceptions=True)
+        fields = await asyncio.gather(*tasks, return_exceptions=True)        
 
     # Temporarily suppress Pandas' SettingWithCopyWarning
     pd.options.mode.chained_assignment = None
@@ -145,15 +149,17 @@ async def main():
     args = parse_args()
     log.basicConfig(level=args.log_level)
 
-    df = load_input(args)
-
+    df = load_input(args)   
     if args.amend:
         output_fname = args.input_fname + args.output_fname
         df = await add_fields_from_incident_url(df, args, predicate=df['incident_url_fields_missing'])
     else:
         output_fname = args.output_fname
         df = add_incident_id(df)
+        time1= time.time()        
         df = await add_fields_from_incident_url(df, args)
+        time2 = time.time()
+        print(time2- time1)
 
     df.to_csv(output_fname,
               index=False,
