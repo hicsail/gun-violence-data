@@ -15,6 +15,11 @@ from log_utils import log_first_call
 from stage2_extractor import NIL_FIELDS
 from stage2_session import Stage2Session
 
+from selenium.webdriver import Chrome
+from selenium import webdriver
+import selenium_utils
+from selenium.webdriver.common.by import By
+
 SCHEMA = {
     'congressional_district': np.float64,
     'state_house_district': np.float64,
@@ -92,7 +97,7 @@ def add_incident_id(df):
     df.insert(0, 'incident_id', df['incident_url'].apply(extract_id))
     return df
 
-async def add_fields_from_incident_url(df, args, predicate=None):
+async def add_fields_from_incident_url(driver, df, args, predicate=None):
     log_first_call()
     def field_name(lst):
         assert len(set([field.name for field in lst])) == 1
@@ -111,10 +116,10 @@ async def add_fields_from_incident_url(df, args, predicate=None):
         tasks = []
         for i in range(len(subset)):
             row = subset.iloc[i]
-            tasks.append(session.get_fields_from_incident_url(row))        
+            tasks.append(session.get_fields_from_incident_url(row, driver))        
         # list of (tuples of Fields) and (exceptions)
-        fields = await asyncio.gather(*tasks, return_exceptions=True)        
-
+        fields = await asyncio.gather(*tasks, return_exceptions=True)
+    
     # Temporarily suppress Pandas' SettingWithCopyWarning
     pd.options.mode.chained_assignment = None
     try:
@@ -149,15 +154,20 @@ async def main():
     args = parse_args()
     log.basicConfig(level=args.log_level)
 
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('w3c', False)
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    driver = webdriver.Chrome(options=options)    
+
     df = load_input(args)   
     if args.amend:
         output_fname = args.input_fname + args.output_fname
-        df = await add_fields_from_incident_url(df, args, predicate=df['incident_url_fields_missing'])
+        df = await add_fields_from_incident_url(driver, df, args, predicate=df['incident_url_fields_missing'])
     else:
         output_fname = args.output_fname
         df = add_incident_id(df)
         time1= time.time()        
-        df = await add_fields_from_incident_url(df, args)
+        df = await add_fields_from_incident_url(driver, df, args)
         time2 = time.time()
         print(time2- time1)
 
