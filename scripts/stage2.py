@@ -27,6 +27,9 @@ SCHEMA = {
     'n_guns_involved': np.float64,
 }
 
+data_dict = {}
+columns = []
+OUTPUT_FNAME = None
 def parse_args():
     targets_specific_month = False
     if len(sys.argv) > 1:
@@ -110,19 +113,30 @@ async def add_fields_from_incident_url(driver, df, args, predicate=None):
     if len(subset) == 0:
         # No work to do
         return df    
-    async with Stage2Session(limit_per_host=args.conn_limit) as session:
-        # list of coros of tuples of Fields        
-        #tasks = subset.apply(session.get_fields_from_incident_url, axis='columns')
-        tasks = []
-        for i in range(len(subset)):
+    async with Stage2Session(limit_per_host=args.conn_limit) as session:        
+        global columns 
+        columns = subset.columns.tolist()        
+        for i in range(len(subset)):            
             row = subset.iloc[i]
-            tasks.append(session.get_fields_from_incident_url(row, driver))        
-        # list of (tuples of Fields) and (exceptions)
-        fields = await asyncio.gather(*tasks, return_exceptions=True)
+            row_to_list = row.tolist()            
+            extra_fields = session.get_fields_from_incident_url(row, driver)
+            if extra_fields:
+                for field_name, field_values in extra_fields:                
+                    if i == 0:
+                        columns.append(field_name)
+                    row_to_list.append(field_values)
+            data_dict[i] = row_to_list
+
+        df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns) 
+        df.to_csv(OUTPUT_FNAME,
+              index=False,
+              float_format='%g',
+              encoding='utf-8')        
     
     # Temporarily suppress Pandas' SettingWithCopyWarning
-    pd.options.mode.chained_assignment = None
-    try:
+    #pd.options.mode.chained_assignment = None
+    #fields = tasks 
+    '''try:
         incident_url_fields_missing = [isinstance(x, Exception) for x in fields]
         subset['incident_url_fields_missing'] = incident_url_fields_missing
         
@@ -146,7 +160,7 @@ async def add_fields_from_incident_url(driver, df, args, predicate=None):
 
     if predicate is not None:
         df.loc[subset.index] = subset
-        df.drop(index=subset.index[not_found], inplace=True)
+        df.drop(index=subset.index[not_found], inplace=True)'''
 
     return df
 
@@ -164,21 +178,28 @@ async def main():
         output_fname = args.input_fname + args.output_fname
         df = await add_fields_from_incident_url(driver, df, args, predicate=df['incident_url_fields_missing'])
     else:
+        global OUTPUT_FNAME
         output_fname = args.output_fname
+        OUTPUT_FNAME = args.output_fname
         df = add_incident_id(df)
         time1= time.time()        
-        df = await add_fields_from_incident_url(driver, df, args)
+        df = await add_fields_from_incident_url(driver, df, args)        
         time2 = time.time()
         print(time2- time1)
 
     df.to_csv(output_fname,
               index=False,
               float_format='%g',
-              encoding='utf-8')
+              encoding='utf-8')   
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    try:
+    try:        
         loop.run_until_complete(main())
-    finally:
+    finally:       
+        df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns) 
+        df.to_csv(OUTPUT_FNAME,
+              index=False,
+              float_format='%g',
+              encoding='utf-8')                    
         loop.close()

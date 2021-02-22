@@ -9,6 +9,7 @@ import json
 import requests
 import time
 import random
+import pandas as pd
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 from aiohttp.client_exceptions import ClientOSError, ClientResponseError
@@ -51,7 +52,7 @@ def _status_from_exception(exc):
     return ''
 
 class Stage2Session(object):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):        
         self.delay = 0
         self._extractor = Stage2Extractor()
         self._conn_options = kwargs
@@ -59,8 +60,8 @@ class Stage2Session(object):
         self._userAgent_index = 1 #for toggling between user agents
 
     #destroy session wih flare solver proxy 
-    '''def __del__(self):
-        requests.post(PROXY_URL, data=json.dumps({
+    def __del__(self):               
+        '''requests.post(PROXY_URL, data=json.dumps({
             "cmd": "sessions.destroy", 
             "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleW...",
             "maxTimeout": 60000, 
@@ -116,8 +117,8 @@ class Stage2Session(object):
             self._log_retry(url, status, wait)
             await asyncio.sleep(wait)      
                 
-    async def _get_fields_from_incident_url(self, row, driver):
-        time.sleep(self.delay)
+    def _get_fields_from_incident_url(self, row, driver):
+        #time.sleep(self.delay)
         incident_url = row['incident_url']        
         #resp = await self._get(incident_url)
 
@@ -132,17 +133,18 @@ class Stage2Session(object):
                       state=row['state'])
         return self._extractor.extract_fields(text, ctx)
 
-    async def get_fields_from_incident_url(self, row, driver):        
+    def get_fields_from_incident_url(self, row, driver):        
         log_first_call()
         try:            
-            return await self._get_fields_from_incident_url(row, driver)
+            return self._get_fields_from_incident_url(row, driver)
         except Exception as exc:
+            pass
             # Passing return_exceptions=True to asyncio.gather() destroys the ability
             # to print them once they're caught, so do that manually here.
-            if isinstance(exc, ClientResponseError) and exc.code == 404:
+            '''if isinstance(exc, ClientResponseError) and exc.code == 404:
                 # 404 is handled gracefully by us so this isn't too newsworthy.
                 pass
             else:
                 self._log_extraction_failed(row['incident_url'])
                 tb.print_exc()
-            raise
+            raise'''
