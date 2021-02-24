@@ -122,8 +122,7 @@ class Stage2Session(object):
                 
     def _get_fields_from_incident_url(self, row, driver):
         #time.sleep(self.delay)
-        incident_url = row['incident_url']        
-        #resp = await self._get(incident_url)
+        incident_url = row['incident_url']       
 
         time1 = time.time()
         driver.get(incident_url) 
@@ -131,8 +130,7 @@ class Stage2Session(object):
         if driver.exists_element(By.ID, 'content'):
             elem = driver.find_element_or_wait(By.ID, 'content')
             if 'with your ip and an explanation for why unusual traffic patterns were detected (if known)' in elem.get_attribute('innerHTML'): 
-                raise IpBlocked                    
-                #return 'FORBIDDEN_REQUEST'   
+                raise IpBlocked                  
         elem = driver.find_element_or_wait(By.CSS_SELECTOR, '.region-content')
         time2 = time.time()        
         self.delay = random.uniform(1, 2) * (time2 - time1)       
