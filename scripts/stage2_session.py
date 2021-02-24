@@ -51,6 +51,9 @@ def _status_from_exception(exc):
 
     return ''
 
+class IpBlocked(Exception):
+    pass
+
 class Stage2Session(object):
     def __init__(self, **kwargs):        
         self.delay = 0
@@ -123,7 +126,13 @@ class Stage2Session(object):
         #resp = await self._get(incident_url)
 
         time1 = time.time()
-        driver.get(incident_url)        
+        driver.get(incident_url) 
+        #Check to see if request is forbbiden due to IP block               
+        if driver.exists_element(By.ID, 'content'):
+            elem = driver.find_element_or_wait(By.ID, 'content')
+            if 'with your ip and an explanation for why unusual traffic patterns were detected (if known)' in elem.get_attribute('innerHTML'): 
+                raise IpBlocked                    
+                #return 'FORBIDDEN_REQUEST'   
         elem = driver.find_element_or_wait(By.CSS_SELECTOR, '.region-content')
         time2 = time.time()        
         self.delay = random.uniform(1, 2) * (time2 - time1)       
@@ -138,6 +147,8 @@ class Stage2Session(object):
         try:            
             return self._get_fields_from_incident_url(row, driver)
         except Exception as exc:
+            if isinstance(exc, IpBlocked):
+                raise                        
             pass
             # Passing return_exceptions=True to asyncio.gather() destroys the ability
             # to print them once they're caught, so do that manually here.

@@ -30,6 +30,7 @@ SCHEMA = {
 data_dict = {}
 columns = []
 OUTPUT_FNAME = None
+INPUT_FNAME = None
 def parse_args():
     targets_specific_month = False
     if len(sys.argv) > 1:
@@ -100,6 +101,18 @@ def add_incident_id(df):
     df.insert(0, 'incident_id', df['incident_url'].apply(extract_id))
     return df
 
+def remove_incident_id_from_source(source_fname, res_fname):
+    res_df = pd.read_csv(res_fname) 
+    source = pd.read_csv(source_fname)
+    source = add_incident_id(source)
+    incident_ids = res_df['incident_id'].tolist()
+    source.drop(source[source['incident_id'].isin(incident_ids)].index, inplace = True)
+    source.drop(['incident_id'], axis=1, inplace = True)
+    source.to_csv(source_fname,
+              index=False,
+              float_format='%g',
+              encoding='utf-8')
+
 async def add_fields_from_incident_url(driver, df, args, predicate=None):
     log_first_call()
     def field_name(lst):
@@ -113,55 +126,33 @@ async def add_fields_from_incident_url(driver, df, args, predicate=None):
     if len(subset) == 0:
         # No work to do
         return df    
-    async with Stage2Session(limit_per_host=args.conn_limit) as session:        
+    async with Stage2Session(limit_per_host=args.conn_limit) as session: 
+        #ip_is_blocked = False
         global columns 
         columns = subset.columns.tolist()        
         for i in range(len(subset)):            
             row = subset.iloc[i]
-            row_to_list = row.tolist()            
-            extra_fields = session.get_fields_from_incident_url(row, driver)
-            if extra_fields:
-                for field_name, field_values in extra_fields:                
-                    if i == 0:
-                        columns.append(field_name)
-                    row_to_list.append(field_values)
-            data_dict[i] = row_to_list
+            row_to_list = row.tolist()
+            try:            
+                extra_fields = session.get_fields_from_incident_url(row, driver)                      
+                if extra_fields:                                    
+                    for field_name, field_values in extra_fields:                
+                        if i == 0:
+                            columns.append(field_name)
+                        row_to_list.append(field_values)
+                data_dict[i] = row_to_list
+            except: #The only exception it raises is IpBlocked 
+                #ip_is_blocked = True                
+                break
 
         df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns) 
-        df.to_csv(OUTPUT_FNAME,
+        df.to_csv(args.output_fname,
               index=False,
               float_format='%g',
-              encoding='utf-8')        
-    
-    # Temporarily suppress Pandas' SettingWithCopyWarning
-    #pd.options.mode.chained_assignment = None
-    #fields = tasks 
-    '''try:
-        incident_url_fields_missing = [isinstance(x, Exception) for x in fields]
-        subset['incident_url_fields_missing'] = incident_url_fields_missing
-        
-        not_found = [isinstance(x, ClientResponseError) and x.code == 404 for x in fields]
+              encoding='utf-8')
 
-        # list of tuples of Fields
-        fields = [NIL_FIELDS if isinstance(x, Exception) else x for x in fields]
-
-        # tuple of lists of Fields, where each list's Fields should have the same name
-        # if the extractor did its job correctly
-        fields = zip(*fields)
-        fields = [(field_name(lst), field_values(lst)) for lst in fields]
-
-        for field_name, field_values in fields:
-            assert subset.shape[0] == len(field_values)
-            subset[field_name] = field_values
-
-        subset = subset.astype(SCHEMA)
-    finally:
-        pd.options.mode.chained_assignment = 'warn'
-
-    if predicate is not None:
-        df.loc[subset.index] = subset
-        df.drop(index=subset.index[not_found], inplace=True)'''
-
+        #if ip_is_blocked:            
+        remove_incident_id_from_source(args.input_fname, args.output_fname)
     return df
 
 async def main():
@@ -179,8 +170,10 @@ async def main():
         df = await add_fields_from_incident_url(driver, df, args, predicate=df['incident_url_fields_missing'])
     else:
         global OUTPUT_FNAME
+        #global INPUT_FNAME
         output_fname = args.output_fname
         OUTPUT_FNAME = args.output_fname
+        #INPUT_FNAME = args.input_fname
         df = add_incident_id(df)
         time1= time.time()        
         df = await add_fields_from_incident_url(driver, df, args)        
@@ -196,7 +189,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     try:        
         loop.run_until_complete(main())
-    finally:       
+    finally:
         df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns) 
         df.to_csv(OUTPUT_FNAME,
               index=False,
