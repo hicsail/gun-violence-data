@@ -4,6 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 
 def exists_element(self, by, value):    
     try:
@@ -59,7 +60,8 @@ def has_page_loaded(self):
 options = webdriver.ChromeOptions()
 options.add_experimental_option('w3c', False)
 options.add_argument("--disable-blink-features=AutomationControlled")
-webdriver = webdriver.Chrome(options=options)
+#webdriver = webdriver.Chrome(options=options)
+webdriver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
 WebDriver.click = click
 WebDriver.find_element_or_wait = find_element_or_wait

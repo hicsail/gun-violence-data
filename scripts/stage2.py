@@ -19,6 +19,7 @@ from selenium.webdriver import Chrome
 from selenium import webdriver
 import selenium_utils
 from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 
 SCHEMA = {
     'congressional_district': np.float64,
@@ -157,7 +158,8 @@ async def main():
     options = webdriver.ChromeOptions()
     options.add_experimental_option('w3c', False)
     options.add_argument("--disable-blink-features=AutomationControlled")
-    driver = webdriver.Chrome(options=options)    
+    #driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
     df = load_input(args)   
     if args.amend:

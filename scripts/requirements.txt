@@ -6,3 +6,5 @@ python-dateutil
 selenium
 bs4
 html5lib
+requests
+webdriver-manager
