@@ -29,6 +29,7 @@ SCHEMA = {
 
 data_dict = {}
 columns = []
+incident_ids = []
 OUTPUT_FNAME = None
 INPUT_FNAME = None
 def parse_args():
@@ -101,11 +102,9 @@ def add_incident_id(df):
     df.insert(0, 'incident_id', df['incident_url'].apply(extract_id))
     return df
 
-def remove_incident_id_from_source(source_fname, res_fname):
-    res_df = pd.read_csv(res_fname) 
+def remove_incident_id_from_source(source_fname, inicident_ids):     
     source = pd.read_csv(source_fname)
-    source = add_incident_id(source)
-    incident_ids = res_df['incident_id'].tolist()
+    source = add_incident_id(source)    
     source.drop(source[source['incident_id'].isin(incident_ids)].index, inplace = True)
     source.drop(['incident_id'], axis=1, inplace = True)
     source.to_csv(source_fname,
@@ -128,8 +127,9 @@ async def add_fields_from_incident_url(driver, df, args, predicate=None):
         return df    
     async with Stage2Session(limit_per_host=args.conn_limit) as session: 
         #ip_is_blocked = False
-        global columns 
-        columns = subset.columns.tolist()        
+        global columns
+        global incident_ids 
+        columns = subset.columns.tolist()                
         for i in range(len(subset)):            
             row = subset.iloc[i]
             row_to_list = row.tolist()
@@ -139,20 +139,15 @@ async def add_fields_from_incident_url(driver, df, args, predicate=None):
                     for field_name, field_values in extra_fields:                
                         if i == 0:
                             columns.append(field_name)
-                        row_to_list.append(field_values)
+                        row_to_list.append(field_values)                
                 data_dict[i] = row_to_list
-            except: #The only exception it raises is IpBlocked 
-                #ip_is_blocked = True                
+                incident_ids.append(row_to_list[0])
+            except Exception as exc: #The only exception it raises is IpBlocked 
+                #ip_is_blocked = True
+                print(str(exc))                
                 break
 
-        df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns) 
-        df.to_csv(args.output_fname,
-              index=False,
-              float_format='%g',
-              encoding='utf-8')
-
-        #if ip_is_blocked:            
-        remove_incident_id_from_source(args.input_fname, args.output_fname)
+        df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns)         
     return df
 
 async def main():
@@ -170,20 +165,15 @@ async def main():
         df = await add_fields_from_incident_url(driver, df, args, predicate=df['incident_url_fields_missing'])
     else:
         global OUTPUT_FNAME
-        #global INPUT_FNAME
+        global INPUT_FNAME        
         output_fname = args.output_fname
         OUTPUT_FNAME = args.output_fname
-        #INPUT_FNAME = args.input_fname
+        INPUT_FNAME = args.input_fname        
         df = add_incident_id(df)
         time1= time.time()        
         df = await add_fields_from_incident_url(driver, df, args)        
         time2 = time.time()
-        print(time2- time1)
-
-    df.to_csv(output_fname,
-              index=False,
-              float_format='%g',
-              encoding='utf-8')   
+        print(time2- time1)      
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
@@ -194,5 +184,6 @@ if __name__ == '__main__':
         df.to_csv(OUTPUT_FNAME,
               index=False,
               float_format='%g',
-              encoding='utf-8')                    
+              encoding='utf-8', mode='a')
+        remove_incident_id_from_source(INPUT_FNAME, incident_ids)                    
         loop.close()
