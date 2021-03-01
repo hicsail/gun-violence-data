@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import sys
 import time
+import os.path
 
 from aiohttp.client_exceptions import ClientResponseError
 from argparse import ArgumentParser
@@ -182,10 +183,18 @@ if __name__ == '__main__':
     try:        
         loop.run_until_complete(main())
     finally:
-        df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns) 
-        df.to_csv(OUTPUT_FNAME,
+        df = pd.DataFrame.from_dict(data_dict, orient='index', columns=columns)
+
+        # don't include headers if we are appending
+        if os.path.isfile(OUTPUT_FNAME):
+            df.to_csv(OUTPUT_FNAME,
+                  index=False,
+                  float_format='%g',
+                  encoding='utf-8', mode='a', header=False)
+        else:
+            df.to_csv(OUTPUT_FNAME,
               index=False,
               float_format='%g',
-              encoding='utf-8', mode='a')
-        remove_incident_id_from_source(INPUT_FNAME, incident_ids)                    
+              encoding='utf-8')
+        remove_incident_id_from_source(INPUT_FNAME, incident_ids)
         loop.close()
