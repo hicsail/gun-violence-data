@@ -8,3 +8,4 @@ bs4
 html5lib
 requests
 webdriver-manager
+playwright
