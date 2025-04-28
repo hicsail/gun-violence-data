@@ -23,10 +23,9 @@ from urllib.parse import parse_qs, urlparse
 
 from stage1_serializer import Stage1Serializer
 
-# NEW: imports for delay and mouse movement
-import random  # NEW
-import time    # NEW
-import pyautogui  # NEW
+import random  
+import time    
+import pyautogui  
 
 # Formats as %m/%d/%Y, but does not leave leading zeroes on the month or day.
 DATE_FORMAT = '%#m/%#d/%Y' if platform.system() == 'Windows' else '%-m/%-d/%Y'
@@ -34,11 +33,11 @@ DATE_FORMAT = '%#m/%#d/%Y' if platform.system() == 'Windows' else '%-m/%-d/%Y'
 MESSAGE_NO_INCIDENTS_AVAILABLE = 'There are currently no incidents available.'
 
 def random_sleep(min_sec=1.0, max_sec=3.0):
-    """Sleep for a random amount of time between min_sec and max_sec."""  # NEW
-    duration = random.uniform(min_sec, max_sec)  # NEW
-    time.sleep(duration)  # NEW
+    """Sleep for a random amount of time between min_sec and max_sec."""  
+    duration = random.uniform(min_sec, max_sec) 
+    time.sleep(duration)  
 
-def random_mouse_move():  # NEW
+def random_mouse_move(): 
     x, y = random.randint(100, 500), random.randint(100, 500)
     pyautogui.moveTo(x, y, duration=random.uniform(0.1, 0.5))
 

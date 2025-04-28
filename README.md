@@ -22,11 +22,19 @@ Because GVA limits the number of incidents that are returned from a single query
 
 **Stage 1:** For each date between 1/1/2013 and 3/31/2018, a Python script queried all incidents that happened at that particular date, then scraped the data and wrote it to a CSV file. Each month got its own CSV file, with the exception of 2013, since not many incidents were recorded from then.
 
+**Playwright integration:** To handle dynamic content loaded via JavaScript on the GVA website, we use Playwright (in addition to Selenium) to ensure that all data is fully loaded before scraping. This ensures more reliable scraping of data, especially for pages with AJAX-loaded content.
+
 **Stage 2:** Each entry was augmented with additional data not directly viewable from the query results page, such as participant information, geolocation data, etc.
 
 **Stage 3:** The entries were sorted in order of increasing date, then merged into a single CSV file.
 
 **[Click here]** to download the tarball the data is stored in. You can decompress the tarball using the [7-Zip] utility on Windows, or via the `tar` executable on macOS/Linux.
+
+### Additional Step for Playwright
+
+After running: `pip install -r requirements.txt` 
+Run the following command to install Playwright's browser binaries:
+`python -m playwright install`
 
 [Click here]: DATA_01-2013_03-2018.tar.gz?raw=true
 [7-Zip]: https://www.7-zip.org/
