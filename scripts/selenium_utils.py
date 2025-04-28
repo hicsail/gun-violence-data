@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 def exists_element(self, by, value):    
     try:
@@ -58,10 +59,18 @@ def has_page_loaded(self):
 
 # TODO: Use getattr/setattr and __all__ instead of writing things out by hand.
 options = webdriver.ChromeOptions()
-options.add_experimental_option('w3c', False)
+#options.add_experimental_option('w3c', False)
 options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
 #webdriver = webdriver.Chrome(options=options)
-webdriver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+#webdriver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+
+# Create a Service object for ChromeDriver
+service = Service(ChromeDriverManager().install())
+
+# Initialize the Chrome driver with the Service and options
+driver = webdriver.Chrome(service=service, options=options)
 
 WebDriver.click = click
 WebDriver.find_element_or_wait = find_element_or_wait
